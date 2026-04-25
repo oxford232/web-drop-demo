@@ -31,6 +31,7 @@ self.addEventListener('fetch', (event) => {
   if (downloadMap.has(event.request.url)) {
     const name = decodeURIComponent(url.searchParams.get('name'));
     const size = url.searchParams.get('size');
+    const type = decodeURIComponent(url.searchParams.get('type'));
     const port = downloadMap.get(event.request.url);
     const bufferedData = bufferMap.get(port);
     bufferMap.delete(port);
@@ -73,7 +74,7 @@ self.addEventListener('fetch', (event) => {
       }
     });
     const headers = new Headers({
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': type,
       'Content-Disposition': 'attachment; filename="'+ name +'"',
       'Content-Length': size
     });
