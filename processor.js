@@ -1662,15 +1662,17 @@
       var UltrasonicProcessor = class extends AudioWorkletProcessor {
         constructor() {
           super();
+          this.slientDuration = 100;
           this.handleMessage = this.handleMessage.bind(this);
           this.port.onmessage = this.handleMessage;
           this.sendBufferIndex = 0;
           this.receiveBufferOffset = 0;
           this.receiveBuffer = new Float32Array(1024);
-          this.frequency = 1;
-          this.amplitude = 0.01;
+          this.frequency = 200;
+          this.amplitude = 1e-5;
           this.phase = 0;
           this.phaseIncrement = 2 * Math.PI * this.frequency / 48e3;
+          this.slientCount = 0;
         }
         handleMessage(e) {
           const { data } = e;
@@ -1708,18 +1710,27 @@
           this.sendBuffer = this.convertTypedArray(waveform, Float32Array);
         }
         process(inputs, outputs) {
+          const len = outputs[0][0].length;
           if (this.sendBuffer) {
-            const len = outputs[0][0].length;
-            const endIndex = this.sendBufferIndex + len < this.sendBuffer.length ? this.sendBufferIndex + len : this.sendBuffer.length;
-            outputs[0][0].set(this.sendBuffer.subarray(this.sendBufferIndex, endIndex));
-            if (endIndex === this.sendBuffer.length) {
-              this.sendBuffer = null;
-              this.sendBufferIndex = 0;
-              this.port.postMessage({
-                type: TRANS_SEND_MSG_DONE
-              });
+            if (this.slientCount < this.slientDuration) {
+              for (let i = 0; i < len; i++) {
+                outputs[0][0][i] = Math.sin(this.phase) * 1e-6;
+                this.phase += this.phaseIncrement;
+              }
+              this.slientCount++;
             } else {
-              this.sendBufferIndex = endIndex;
+              const endIndex = this.sendBufferIndex + len < this.sendBuffer.length ? this.sendBufferIndex + len : this.sendBuffer.length;
+              outputs[0][0].set(this.sendBuffer.subarray(this.sendBufferIndex, endIndex));
+              if (endIndex === this.sendBuffer.length) {
+                this.sendBuffer = null;
+                this.sendBufferIndex = 0;
+                this.port.postMessage({
+                  type: TRANS_SEND_MSG_DONE
+                });
+                this.slientCount = 0;
+              } else {
+                this.sendBufferIndex = endIndex;
+              }
             }
           }
           if (inputs[0][0]) {
@@ -1734,7 +1745,7 @@
                 this.port.postMessage({
                   type: TRANS_RECV_MSG,
                   buffer
-                });
+                }, [buffer.buffer]);
               }
               this.receiveBufferOffset = 0;
             }
