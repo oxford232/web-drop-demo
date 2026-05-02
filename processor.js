@@ -1643,7 +1643,7 @@
   });
 
   // src/transport/message.api.ts
-  var TRANS_INIT, TRANS_INIT_SUCCESS, TRANS_SEND_MSG, TRANS_SEND_MSG_DONE, TRANS_RECV_MSG;
+  var TRANS_INIT, TRANS_INIT_SUCCESS, TRANS_SEND_MSG, TRANS_SEND_MSG_DONE, TRANS_RECV_MSG, TRANS_DEBUG_MSG;
   var init_message_api = __esm({
     "src/transport/message.api.ts"() {
       TRANS_INIT = "TRANS_INIT";
@@ -1651,6 +1651,7 @@
       TRANS_SEND_MSG = "TRANS_SEND_MSG";
       TRANS_SEND_MSG_DONE = "TRANS_SEND_MSG_DONE";
       TRANS_RECV_MSG = "TRANS_RECV_MSG";
+      TRANS_DEBUG_MSG = "TRANS_DEBUG_MSG";
     }
   });
 
@@ -1673,6 +1674,12 @@
           this.phase = 0;
           this.phaseIncrement = 2 * Math.PI * this.frequency / 48e3;
           this.slientCount = 0;
+          console.error = console.warn = console.log = (message) => {
+            this.port.postMessage({
+              type: TRANS_DEBUG_MSG,
+              data: message
+            });
+          };
         }
         handleMessage(e) {
           const { data } = e;
@@ -1739,7 +1746,6 @@
             if (this.receiveBufferOffset === 1024) {
               const res = this.ggwave?.decode(this.ggwaveIns, this.convertTypedArray(this.receiveBuffer, Int8Array));
               if (res && res.length > 0) {
-                console.log("receive data: ", res);
                 const buffer = res.slice();
                 buffer.set(res);
                 this.port.postMessage({
